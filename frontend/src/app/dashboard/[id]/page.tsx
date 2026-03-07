@@ -1,14 +1,71 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
 import StatsCard from "@/components/stats-card";
-import { Activity, Code, FileText, AlertCircle, TrendingUp, History } from "lucide-react";
+import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { api, Repository, AnalysisStatus } from "@/lib/api";
 
 export default function RepositoryDashboard() {
-  // Mock Data (To be replaced with real API data)
+  const { id } = useParams();
+  const repoId = parseInt(id as string);
+
+  const [repo, setRepo] = useState<Repository | null>(null);
+  const [status, setStatus] = useState<AnalysisStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [repoData, statusData] = await Promise.all([
+        api.getRepository(repoId),
+        api.getAnalysisStatus(repoId)
+      ]);
+      setRepo(repoData);
+      setStatus(statusData);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [repoId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Polling logic
+  useEffect(() => {
+    if (!status || status.status === "Done" || status.status === "Error") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const statusData = await api.getAnalysisStatus(repoId);
+        setStatus(statusData);
+        if (statusData.status === "Done") {
+          fetchData(); // Final refresh
+          clearInterval(interval);
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [status, repoId, fetchData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#020617]">
+        <Loader2 className="w-10 h-10 text-[#00E5FF] animate-spin" />
+      </div>
+    );
+  }
+
   const repoStats = [
-    { label: "Health Score", value: "84/100", icon: Activity, trend: "+2.4%", trendUp: true },
-    { label: "Total Files", value: "1,248", icon: FileText },
-    { label: "Cyclomatic Complexity", value: "A (Avg 4.2)", icon: Code, trend: "-1.1%", trendUp: true },
+    { label: "Health Score", value: repo?.health_score ? `${repo.health_score}/100` : "...", icon: Activity, trend: "+2.4%", trendUp: true },
+    { label: "Status", value: status?.status || "Unknown", icon: History },
+    { label: "Analysis ID", value: `#${status?.id || "..."}`, icon: Code },
     { label: "Predictive Risks", value: "12", icon: AlertCircle, trend: "Stable", trendUp: true },
   ];
 
@@ -19,15 +76,16 @@ export default function RepositoryDashboard() {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-3xl font-bold text-white tracking-tight leading-tight">
-              Repo: <span className="text-[#00E5FF]">facebook/react</span>
+              Repo: <span className="text-[#00E5FF]">{repo?.github_url.split("/").slice(-2).join("/") || "Loading..."}</span>
             </h2>
-            <p className="text-slate-400 mt-2 text-lg">Predictive Refactoring Analysis for <code className="bg-slate-800 px-2 py-0.5 rounded text-[#00E5FF]">main</code> branch</p>
+            <p className="text-slate-400 mt-2 text-lg">Predictive Refactoring Analysis for <code className="bg-slate-800 px-2 py-0.5 rounded text-[#00E5FF]">{repo?.default_branch || "main"}</code> branch</p>
           </div>
           <button className="px-6 py-3 bg-[#00E5FF] text-[#020617] font-bold rounded-xl hover:shadow-[0_0_20px_rgba(0,229,255,0.4)] transition-all flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />
             Simulate Refactor
           </button>
         </div>
+...
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

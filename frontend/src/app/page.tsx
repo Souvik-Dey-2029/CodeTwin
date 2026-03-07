@@ -1,64 +1,100 @@
-import Link from "next/link";
-import { Github, Zap, Layout, Search, Sparkles, Binary } from "lucide-react";
+"use client";
 
-export default function Home() {
+import React, { useState } from "react";
+import { Github, ArrowRight, Activity, ShieldCheck, Zap, Globe, Layout, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+
+export default function LandingPage() {
+  const [url, setUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url) return;
+    
+    setIsLoading(true);
+    try {
+      const repo = await api.submitRepository(url);
+      router.push(`/dashboard/${repo.id}`);
+    } catch (error) {
+      console.error("Submission failed:", error);
+      alert("Failed to initialize Digital Twin. Please check the URL.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="relative min-h-screen overflow-hidden selection:bg-cyan-500/30">
-      {/* Dynamic Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[#09090b]">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-500/10 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px]" />
+    <div className="min-h-screen bg-[#020617] text-slate-200 selection:bg-[#00E5FF]/30 selection:text-white font-sans overflow-x-hidden">
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#00E5FF]/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#006064]/20 rounded-full blur-[120px]" />
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
       </div>
 
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+      <nav className="relative z-10 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 group cursor-pointer">
-          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:border-cyan-500/50 transition-colors">
-            <Binary className="w-6 h-6 text-cyan-400" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00E5FF] to-[#006064] flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(0,229,255,0.5)] transition-all">
+            <span className="text-white font-bold text-2xl">C</span>
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">CODETWIN</span>
+          <span className="text-2xl font-bold tracking-tight text-white">CODETWIN</span>
         </div>
-        <div className="hidden md:flex items-center gap-8">
-          <Link href="#features" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">Features</Link>
-          <Link href="#how-it-works" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">How it Works</Link>
-          <a href="https://github.com" className="p-2 rounded-full hover:bg-zinc-800 transition-colors">
-            <Github className="w-5 h-5 text-zinc-400" />
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
+          <a href="#" className="hover:text-[#00E5FF] transition-colors">Features</a>
+          <a href="#" className="hover:text-[#00E5FF] transition-colors">How it works</a>
+          <a href="#" className="hover:text-white transition-colors flex items-center gap-2">
+            <Github className="w-4 h-4" />
+            GitHub
           </a>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 px-6 pt-20 pb-24 mx-auto max-w-7xl text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-xs font-semibold text-cyan-400 animate-pulse">
-          <Sparkles className="w-3 h-3" />
-          <span>Next-Gen Code Intelligence is here</span>
+      <main className="relative z-10 pt-20 pb-32 px-6 max-w-5xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50 text-[#00E5FF] text-xs font-bold tracking-widest uppercase mb-8 animate-fade-in">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse" />
+          v0.1.0 Experimental Engine
         </div>
-        
-        <h1 className="mb-6 text-5xl md:text-7xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500">
-          Digital Twin for your <br />
-          <span className="text-cyan-400">Software Architecture</span>
+
+        <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tighter mb-8 leading-[1.1]">
+          Map Your Codebase's <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00E5FF] to-[#00838F]">Future Twin</span>
         </h1>
-        
-        <p className="mb-12 text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-          Analyze, simulate, and refactor with precision. CodeTwin maps your codebase's DNA to predict risks and guide your next architectural evolution.
+
+        <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed">
+          The first AI Digital Twin for software architecture. Predict structural decay, map dependencies, and simulate refactors before they happen.
         </p>
 
-        {/* Input Field */}
-        <div className="relative max-w-2xl mx-auto mb-20 group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-          <div className="relative flex items-center p-2 rounded-xl bg-zinc-900 border border-zinc-800 focus-within:border-cyan-500/50 transition-all shadow-2xl">
-            <div className="flex items-center flex-1 pl-4">
-              <Search className="w-5 h-5 text-zinc-500" />
+        {/* Input Area */}
+        <div className="max-w-2xl mx-auto mb-20">
+          <form onSubmit={handleSubmit} className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#00E5FF] to-[#00838F] rounded-2xl blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="relative flex p-2 bg-slate-900/80 border border-slate-700/50 rounded-2xl backdrop-blur-xl">
               <input 
                 type="text" 
-                placeholder="Paste a GitHub repository link (e.g., https://github.com/facebook/react)"
-                className="w-full bg-transparent border-none focus:ring-0 text-zinc-200 placeholder:text-zinc-600 px-4 py-3 outline-none"
+                placeholder="Paste GitHub Repository URL..." 
+                className="flex-1 bg-transparent px-6 py-4 text-white placeholder:text-slate-500 focus:outline-none text-lg"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={isLoading}
               />
+              <button 
+                type="submit"
+                className="bg-[#00E5FF] text-[#020617] px-8 rounded-xl font-bold flex items-center gap-2 hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? "Initializing..." : "Clone Twin"}
+                <ArrowRight className="w-5 h-5" />
+              </button>
             </div>
-            <button className="px-6 py-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold transition-all transform active:scale-95 flex items-center gap-2">
-              Analyze Twin
-              <Zap className="w-4 h-4" />
-            </button>
+          </form>
+          <div className="flex gap-4 mt-6 justify-center text-xs text-slate-500 font-medium tracking-wide">
+            <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Public Repos Only</span>
+            <span className="flex items-center gap-1.5 text-slate-400">🔥 Supported: Python, JS, TS</span>
           </div>
         </div>
 
