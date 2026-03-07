@@ -3,6 +3,7 @@ import tree_sitter
 from pathlib import Path
 from typing import List, Dict, Any
 from analysis_engine.language_specs import PYTHON_QUERIES, JAVASCRIPT_QUERIES
+from analysis_engine.metrics import MetricsCollector
 
 class CodebaseParser:
     """Orchestrates the parsing of a codebase using Tree-sitter."""
@@ -40,8 +41,17 @@ class CodebaseParser:
             metadata = {
                 "path": str(file_path.relative_to(self.root_path)),
                 "symbols": [],
-                "imports": []
+                "imports": [],
+                "metrics": {}
             }
+
+            # If the file is Python, we can calculate metrics using Radon
+            if ext == ".py":
+                try:
+                    code_str = content.decode("utf-8")
+                    metadata["metrics"] = MetricsCollector.analyze_file(code_str)
+                except Exception as e:
+                    print(f"Failed to decode or analyze metrics for {file_path}: {e}")
 
             # If we had the language and parser initialized, we would do:
             # parser = tree_sitter.Parser()
