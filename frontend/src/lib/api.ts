@@ -38,4 +38,16 @@ export const api = {
     if (!response.ok) throw new Error("Failed to fetch repository details");
     return response.json();
   },
+
+  async getRepositoryGraph(repoId: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/graph`);
+    if (!response.ok) throw new Error("Failed to fetch graph data");
+    return response.json();
+  },
+
+  async getRepositoryHeatmap(repoId: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/heatmap`);
+    if (!response.ok) throw new Error("Failed to fetch heatmap data");
+    return response.json();
+  },
 };

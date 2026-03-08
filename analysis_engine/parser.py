@@ -1,5 +1,6 @@
 import os
 import tree_sitter
+import networkx as nx
 from pathlib import Path
 from typing import List, Dict, Any
 from analysis_engine.language_specs import PYTHON_QUERIES, JAVASCRIPT_QUERIES
@@ -12,6 +13,7 @@ class CodebaseParser:
         self.root_path = Path(root_path)
         self.files: List[Path] = []
         self.languages: Dict[str, Any] = {}
+        self.graph = nx.DiGraph()
 
     def scan_files(self, extensions: List[str] = [".py", ".js", ".ts"]) -> List[str]:
         """Scans the directory for files with specific extensions."""
@@ -60,7 +62,14 @@ class CodebaseParser:
             # query = language.query(self._get_tree_sitter_query(ext, "imports"))
             # captures = query.captures(tree.root_node)
             
-            # For now, we simulate the structure we want to achieve
+            # Logic for dependency resolution (simplified)
+            rel_path = str(file_path.relative_to(self.root_path))
+            self.graph.add_node(rel_path)
+            
+            # Simulated import extraction (we would use tree-sitter here)
+            # For demonstration, we'll assume a few internal deps are found
+            # based on file content strings for now, until full parsing is deep.
+            
             return metadata
         except Exception as e:
             print(f"Error parsing {file_path}: {e}")

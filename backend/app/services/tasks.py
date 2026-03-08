@@ -31,7 +31,14 @@ def run_full_analysis(self, repo_url: str, repo_id: int, analysis_id: int):
         parser.scan_files()
         structure = parser.parse_structure()
         
-        # 3. Process Results (Placeholder for storage logic)
+        # 3. Graph Analysis
+        from analysis_engine.graph_analyzer import GraphAnalyzer
+        analyzer = GraphAnalyzer(parser.graph)
+        file_metrics = {f["path"]: f["metrics"] for f in structure["files"]}
+        risk_scores = analyzer.get_risk_scores(file_metrics)
+        d3_data = analyzer.get_d3_data(file_metrics)
+        
+        # 4. Process Results (Placeholder for storage logic)
         # In a real scenario, we would iterate through structure['files'] 
         # and update File and RiskScore models.
         

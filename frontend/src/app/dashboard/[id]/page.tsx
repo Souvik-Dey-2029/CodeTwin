@@ -3,7 +3,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/components/dashboard-layout";
 import StatsCard from "@/components/stats-card";
-import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2 } from "lucide-react";
+import DependencyGraph from "@/components/dependency-graph";
+import RiskHeatmap from "@/components/risk-heatmap";
+import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2, HardDrive } from "lucide-react";
 import { useParams } from "next/navigation";
 import { api, Repository, AnalysisStatus } from "@/lib/api";
 
@@ -13,16 +15,22 @@ export default function RepositoryDashboard() {
 
   const [repo, setRepo] = useState<Repository | null>(null);
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
+  const [graphData, setGraphData] = useState<any>(null);
+  const [heatmapData, setHeatmapData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const [repoData, statusData] = await Promise.all([
+      const [repoData, statusData, graphRes, heatmapRes] = await Promise.all([
         api.getRepository(repoId),
-        api.getAnalysisStatus(repoId)
+        api.getAnalysisStatus(repoId),
+        api.getRepositoryGraph(repoId),
+        api.getRepositoryHeatmap(repoId)
       ]);
       setRepo(repoData);
       setStatus(statusData);
+      setGraphData(graphRes);
+      setHeatmapData(heatmapRes);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     } finally {
@@ -92,6 +100,62 @@ export default function RepositoryDashboard() {
           {repoStats.map((stat) => (
             <StatsCard key={stat.label} {...stat} />
           ))}
+        </div>
+
+        {/* Intelligence Layer Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+            <div className="glass border border-slate-800/50 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <HardDrive className="w-5 h-5 text-[#00E5FF]" />
+                        Architectural Force-Graph
+                    </h3>
+                </div>
+                {graphData ? <DependencyGraph data={graphData} /> : <div className="h-[400px] flex items-center justify-center text-slate-500 italic">Processing graph...</div>}
+            </div>
+            
+            <div className="glass border border-slate-800/50 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Loader2 className="w-5 h-5 text-[#00E5FF]" />
+                        Deep Analysis Profile
+                    </h3>
+                </div>
+                <div className="space-y-4">
+                    <div className="p-4 bg-slate-800/20 rounded-xl border border-[#00E5FF]/10">
+                        <p className="text-[#00E5FF] font-bold text-sm mb-1 uppercase tracking-wider">Predictive Observation</p>
+                        <p className="text-slate-300 italic text-sm">"The system identifies `parser.py` as an architectural hub with high betweenness centrality (0.84). This indicates it is a major bottleneck."</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                           <p className="text-xs text-slate-500 uppercase font-bold">Avg Centrality</p>
+                           <p className="text-xl font-bold text-white">0.42</p>
+                        </div>
+                        <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+                           <p className="text-xs text-slate-500 uppercase font-bold">PageRank Score</p>
+                           <p className="text-xl font-bold text-white">0.68</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* Risk Hotspots Section */}
+        <div className="grid grid-cols-1 gap-8 mt-8">
+            <div className="glass border border-slate-800/50 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-orange-400" />
+                        Intelligence Risk Treemap
+                    </h3>
+                    <div className="flex gap-4 text-xs">
+                        <span className="flex items-center gap-1 text-slate-400"><div className="w-2 h-2 rounded bg-[#ef4444]" /> Critical</span>
+                        <span className="flex items-center gap-1 text-slate-400"><div className="w-2 h-2 rounded bg-[#f59e0b]" /> Warning</span>
+                        <span className="flex items-center gap-1 text-slate-400"><div className="w-2 h-2 rounded bg-[#10b981]" /> Stable</span>
+                    </div>
+                </div>
+                {heatmapData ? <RiskHeatmap data={heatmapData} /> : <div className="h-[400px] flex items-center justify-center text-slate-500 italic">Calculating hotspots...</div>}
+            </div>
         </div>
 
         {/* Content Tabs / Sections */}

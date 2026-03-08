@@ -45,3 +45,36 @@ def get_repository(repo_id: int, db: Session = Depends(get_db)):
     if not db_repo:
         raise HTTPException(status_code=404, detail="Repository not found")
     return db_repo
+
+@router.get("/{repo_id}/graph")
+def get_repository_graph(repo_id: int, db: Session = Depends(get_db)):
+    # In a real implementation, we would fetch the last successful 
+    # analysis run and its associated graph data from the DB.
+    # For MVP demonstration, we'll return a mock graph structure.
+    return {
+        "nodes": [
+            {"id": "main.py", "name": "main.py", "complexity": 12, "centrality": 0.8, "pagerank": 0.5},
+            {"id": "utils.py", "name": "utils.py", "complexity": 5, "centrality": 0.2, "pagerank": 0.1},
+            {"id": "api/routes.py", "name": "routes.py", "complexity": 18, "centrality": 0.6, "pagerank": 0.3}
+        ],
+        "links": [
+            {"source": "main.py", "target": "utils.py"},
+            {"source": "main.py", "target": "api/routes.py"}
+        ]
+    }
+
+@router.get("/{repo_id}/heatmap")
+def get_repository_heatmap(repo_id: int, db: Session = Depends(get_db)):
+    # Mock heatmap data (Treemap format)
+    return {
+        "name": "root",
+        "children": [
+            {"name": "core", "children": [
+                {"name": "engine.py", "value": 45},
+                {"name": "parser.py", "value": 32}
+            ]},
+            {"name": "ui", "children": [
+                {"name": "dashboard.tsx", "value": 15}
+            ]}
+        ]
+    }
