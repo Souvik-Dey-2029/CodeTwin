@@ -11,6 +11,11 @@ class AnalysisRun(Base):
     status = Column(String)  # Queue, Active, Done, Error
     runtime_ms = Column(Integer, nullable=True)
     error_log = Column(Text, nullable=True)
+    
+    # Store results as JSON for easy retrieval
+    graph_data = Column(JSON, nullable=True)
+    heatmap_data = Column(JSON, nullable=True)
+    refactor_data = Column(JSON, nullable=True)
 
 class RiskScore(Base):
     __tablename__ = "risk_scores"

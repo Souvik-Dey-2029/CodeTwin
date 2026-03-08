@@ -1,16 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+import os
+from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.models.repository import Repository
 from app.models.analysis import AnalysisRun
-from app.schemas.repository import RepositoryCreate, RepositoryOut, AnalysisOut
+from app.schemas.repository import (
+    RepositoryCreate, 
+    RepositoryOut, 
+    AnalysisOut, 
+    RefactorProposalOut, 
+    ImpactSimulationRequest, 
+    ImpactSimulationOut,
+    DashboardSummaryOut
+)
 from app.services.tasks import run_full_analysis
+import networkx as nx
+from analysis_engine.graph_analyzer import GraphAnalyzer
 
 router = APIRouter()
 
+@router.get("/", response_model=List[RepositoryOut])
+def list_repositories(db: Session = Depends(get_db)):
+    return db.query(Repository).order_by(Repository.id.desc()).limit(10).all()
+
 @router.post("/", response_model=RepositoryOut)
-def create_repository(repo_in: RepositoryCreate, db: Session = Depends(get_db)):
+def create_repository(repo_in: RepositoryCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # Check if exists
     db_repo = db.query(Repository).filter(Repository.github_url == repo_in.github_url).first()
     if not db_repo:
@@ -27,8 +43,9 @@ def create_repository(repo_in: RepositoryCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(analysis)
 
-    # Trigger Celery Task
-    run_full_analysis.delay(db_repo.github_url, db_repo.id, analysis.id)
+    # Trigger Analysis via BackgroundTasks (More robust for local dev)
+    from app.services.tasks import run_analysis_logic
+    background_tasks.add_task(run_analysis_logic, db_repo.github_url, db_repo.id, analysis.id)
 
     return db_repo
 
@@ -46,35 +63,118 @@ def get_repository(repo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Repository not found")
     return db_repo
 
+@router.get("/{repo_id}/summary", response_model=DashboardSummaryOut)
+def get_dashboard_summary(repo_id: int, db: Session = Depends(get_db)):
+    repo = db.query(Repository).filter(Repository.id == repo_id).first()
+    if not repo:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    analysis = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id, AnalysisRun.status == "Done").order_by(AnalysisRun.id.desc()).first()
+    
+    if not analysis:
+        # Check for in-progress analysis to give better status
+        latest = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id).order_by(AnalysisRun.id.desc()).first()
+        status = latest.status if latest else "Queue"
+        return {
+            "health_score": repo.health_score,
+            "status": status,
+            "analysis_id": latest.id if latest else None,
+            "god_object_count": 0,
+            "total_files": 0,
+            "total_dependencies": 0,
+            "risk_level": "Unknown"
+        }
+    
+    god_objects = analysis.refactor_data or []
+    graph = analysis.graph_data or {"nodes": [], "links": []}
+    
+    # Calculate risk level
+    risk_level = "Low"
+    if repo.health_score < 60 or len(god_objects) > 5:
+        risk_level = "High"
+    elif repo.health_score < 85 or len(god_objects) > 2:
+        risk_level = "Medium"
+        
+    return {
+        "health_score": repo.health_score,
+        "status": analysis.status,
+        "analysis_id": analysis.id,
+        "god_object_count": len(god_objects),
+        "total_files": len(graph.get("nodes", [])),
+        "total_dependencies": len(graph.get("links", [])),
+        "risk_level": risk_level
+    }
+
 @router.get("/{repo_id}/graph")
 def get_repository_graph(repo_id: int, db: Session = Depends(get_db)):
-    # In a real implementation, we would fetch the last successful 
-    # analysis run and its associated graph data from the DB.
-    # For MVP demonstration, we'll return a mock graph structure.
-    return {
-        "nodes": [
-            {"id": "main.py", "name": "main.py", "complexity": 12, "centrality": 0.8, "pagerank": 0.5},
-            {"id": "utils.py", "name": "utils.py", "complexity": 5, "centrality": 0.2, "pagerank": 0.1},
-            {"id": "api/routes.py", "name": "routes.py", "complexity": 18, "centrality": 0.6, "pagerank": 0.3}
-        ],
-        "links": [
-            {"source": "main.py", "target": "utils.py"},
-            {"source": "main.py", "target": "api/routes.py"}
-        ]
-    }
+    analysis = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id, AnalysisRun.status == "Done").order_by(AnalysisRun.id.desc()).first()
+    if not analysis or not analysis.graph_data:
+        # Fallback to empty graph if no analysis done
+        return {"nodes": [], "links": []}
+    return analysis.graph_data
 
 @router.get("/{repo_id}/heatmap")
 def get_repository_heatmap(repo_id: int, db: Session = Depends(get_db)):
-    # Mock heatmap data (Treemap format)
-    return {
-        "name": "root",
-        "children": [
-            {"name": "core", "children": [
-                {"name": "engine.py", "value": 45},
-                {"name": "parser.py", "value": 32}
-            ]},
-            {"name": "ui", "children": [
-                {"name": "dashboard.tsx", "value": 15}
-            ]}
-        ]
-    }
+    analysis = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id, AnalysisRun.status == "Done").order_by(AnalysisRun.id.desc()).first()
+    if not analysis or not analysis.heatmap_data:
+        return {"name": "root", "children": []}
+    return analysis.heatmap_data
+
+@router.get("/{repo_id}/refactor-proposals", response_model=List[RefactorProposalOut])
+def get_refactor_proposals(repo_id: int, db: Session = Depends(get_db)):
+    analysis = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id, AnalysisRun.status == "Done").order_by(AnalysisRun.id.desc()).first()
+    if not analysis or not analysis.refactor_data:
+        return []
+    
+    # Process refactor data into the schema format
+    proposals = []
+    for item in analysis.refactor_data:
+        proposals.append({
+            "file_path": item["file_path"],
+            "complexity": item["complexity"],
+            "centrality": item["centrality"],
+            "reason": item["reason"],
+            "suggested_action": f"Extract logic from {item['file_path']} to reduce architectural pressure."
+        })
+    return proposals
+
+@router.post("/{repo_id}/simulate-impact", response_model=ImpactSimulationOut)
+def simulate_impact(repo_id: int, req: ImpactSimulationRequest, db: Session = Depends(get_db)):
+    analysis = db.query(AnalysisRun).filter(AnalysisRun.repo_id == repo_id, AnalysisRun.status == "Done").order_by(AnalysisRun.id.desc()).first()
+    if not analysis or not analysis.graph_data:
+        raise HTTPException(status_code=404, detail="No completed analysis found for this repository")
+
+    # Reconstruct graph from JSON
+    graph = nx.DiGraph()
+    for node in analysis.graph_data["nodes"]:
+        graph.add_node(node["id"], **node)
+    for link in analysis.graph_data["links"]:
+        graph.add_edge(link["source"], link["target"])
+
+    analyzer = GraphAnalyzer(graph)
+    result = analyzer.simulate_blast_radius(req.file_path)
+    return result
+
+@router.get("/{repo_id}/file-content")
+def get_file_content(repo_id: int, path: str):
+    # Construct base path (matches cloner.py default)
+    base_dir = Path("C:/tmp/codetwin") if os.name == "nt" else Path("/tmp/codetwin")
+    file_path = base_dir / str(repo_id) / path
+    
+    # Security check: ensure path is within the repo directory
+    try:
+        resolved_file = file_path.resolve()
+        resolved_repo = (base_dir / str(repo_id)).resolve()
+        if not str(resolved_file).startswith(str(resolved_repo)):
+            raise HTTPException(status_code=403, detail="Access denied")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return {"content": f.read()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

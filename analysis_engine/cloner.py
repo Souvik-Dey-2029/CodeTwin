@@ -6,7 +6,9 @@ from pathlib import Path
 class RepositoryCloner:
     """Utility to clone GitHub repositories for analysis."""
     
-    def __init__(self, base_work_dir: str = "/tmp/codetwin"):
+    def __init__(self, base_work_dir: str = None):
+        if base_work_dir is None:
+            base_work_dir = "C:/tmp/codetwin" if os.name == "nt" else "/tmp/codetwin"
         self.base_work_dir = Path(base_work_dir)
         self.base_work_dir.mkdir(parents=True, exist_ok=True)
 

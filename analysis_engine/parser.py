@@ -55,20 +55,23 @@ class CodebaseParser:
                 except Exception as e:
                     print(f"Failed to decode or analyze metrics for {file_path}: {e}")
 
-            # If we had the language and parser initialized, we would do:
-            # parser = tree_sitter.Parser()
-            # parser.set_language(language)
-            # tree = parser.parse(content)
-            # query = language.query(self._get_tree_sitter_query(ext, "imports"))
-            # captures = query.captures(tree.root_node)
-            
-            # Logic for dependency resolution (simplified)
+            # Fallback: Basic dependency resolution based on filename pattern matching
+            # logic for dependency resolution (simplified)
             rel_path = str(file_path.relative_to(self.root_path))
             self.graph.add_node(rel_path)
             
-            # Simulated import extraction (we would use tree-sitter here)
-            # For demonstration, we'll assume a few internal deps are found
-            # based on file content strings for now, until full parsing is deep.
+            # Simple heuristic: files in the same directory often depend on each other
+            # or 'main' files depend on others.
+            for other_file in self.files:
+                other_rel = str(other_file.relative_to(self.root_path))
+                if other_rel != rel_path:
+                    # If this is a main file, add links to others in the same subtree
+                    if "main" in rel_path.lower() or "app" in rel_path.lower():
+                        if os.path.dirname(rel_path) == os.path.dirname(other_rel):
+                            self.graph.add_edge(rel_path, other_rel)
+            
+            # If we had the language and parser initialized, we would do deeper AST analysis.
+            # But the current fallback ensures we always have a graph to visualize.
             
             return metadata
         except Exception as e:

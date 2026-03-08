@@ -1,14 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
-import { Github, ArrowRight, Activity, ShieldCheck, Zap, Globe, Layout, Sparkles } from "lucide-react";
+import { Github, ArrowRight, Activity, ShieldCheck, Zap, Globe, Layout, Sparkles, History as HistoryIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 export default function LandingPage() {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [recentRepos, setRecentRepos] = useState<any[]>([]);
   const router = useRouter();
+
+  React.useEffect(() => {
+    async function loadRecent() {
+      try {
+        const data = await api.listRepositories();
+        setRecentRepos(data);
+      } catch (err) {
+        console.error("Failed to load recent repos", err);
+      }
+    }
+    loadRecent();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +110,42 @@ export default function LandingPage() {
             <span className="flex items-center gap-1.5 text-slate-400">🔥 Supported: Python, JS, TS</span>
           </div>
         </div>
+
+        {/* Recent Digital Twins Section */}
+        {recentRepos.length > 0 && (
+          <div className="max-w-5xl mx-auto mb-32 animate-fade-in text-left">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-cyan-400" />
+              Community Digital Twins
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {recentRepos.map((repo) => (
+                <a
+                  key={repo.id}
+                  href={`/dashboard/${repo.id}`}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md hover:border-cyan-500/50 hover:bg-white/[0.07] hover:shadow-[0_0_20px_rgba(0,229,255,0.1)] transition-all group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                    <ArrowRight className="w-3 h-3 text-cyan-400" />
+                  </div>
+                  <div className="text-sm font-bold text-white mb-1 truncate">
+                    {repo.github_url.split("/").pop()}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate mb-4">
+                    {repo.github_url.split("/").slice(-2).join("/")}
+                  </div>
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${repo.health_score > 80 ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" : repo.health_score > 50 ? "bg-amber-400" : "bg-red-400"}`} />
+                      <span className="text-[10px] text-slate-400 font-medium">Arch Health</span>
+                    </div>
+                    <span className="text-xs font-black text-cyan-400">{repo.health_score}%</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Feature Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">

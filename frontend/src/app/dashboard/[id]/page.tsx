@@ -5,7 +5,8 @@ import DashboardLayout from "@/components/dashboard-layout";
 import StatsCard from "@/components/stats-card";
 import DependencyGraph from "@/components/dependency-graph";
 import RiskHeatmap from "@/components/risk-heatmap";
-import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2, HardDrive } from "lucide-react";
+import RefactorAdvisor from "@/components/refactor-advisor";
+import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2, HardDrive, Zap } from "lucide-react";
 import { useParams } from "next/navigation";
 import { api, Repository, AnalysisStatus } from "@/lib/api";
 
@@ -14,6 +15,7 @@ export default function RepositoryDashboard() {
   const repoId = parseInt(id as string);
 
   const [repo, setRepo] = useState<Repository | null>(null);
+  const [summary, setSummary] = useState<any>(null);
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
   const [graphData, setGraphData] = useState<any>(null);
   const [heatmapData, setHeatmapData] = useState<any>(null);
@@ -21,13 +23,15 @@ export default function RepositoryDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [repoData, statusData, graphRes, heatmapRes] = await Promise.all([
+      const [repoData, summaryData, statusData, graphRes, heatmapRes] = await Promise.all([
         api.getRepository(repoId),
+        api.getDashboardSummary(repoId),
         api.getAnalysisStatus(repoId),
         api.getRepositoryGraph(repoId),
         api.getRepositoryHeatmap(repoId)
       ]);
       setRepo(repoData);
+      setSummary(summaryData);
       setStatus(statusData);
       setGraphData(graphRes);
       setHeatmapData(heatmapRes);
@@ -71,10 +75,10 @@ export default function RepositoryDashboard() {
   }
 
   const repoStats = [
-    { label: "Health Score", value: repo?.health_score ? `${repo.health_score}/100` : "...", icon: Activity, trend: "+2.4%", trendUp: true },
-    { label: "Status", value: status?.status || "Unknown", icon: History },
-    { label: "Analysis ID", value: `#${status?.id || "..."}`, icon: Code },
-    { label: "Predictive Risks", value: "12", icon: AlertCircle, trend: "Stable", trendUp: true },
+    { label: "Health Score", value: summary ? `${summary.health_score}/100` : "...", icon: Activity, trend: summary?.risk_level || "...", trendUp: summary?.risk_level === "Low" },
+    { label: "Status", value: summary?.status || status?.status || "Unknown", icon: History },
+    { label: "Architectural Debt", value: summary ? `${summary.god_object_count} God Objects` : "...", icon: Zap, trend: summary?.risk_level === "High" ? "Critical" : "Stable", trendUp: summary?.risk_level === "Low" },
+    { label: "System Size", value: summary ? `${summary.total_files} Files` : "...", icon: Code },
   ];
 
   return (
@@ -155,6 +159,22 @@ export default function RepositoryDashboard() {
                     </div>
                 </div>
                 {heatmapData ? <RiskHeatmap data={heatmapData} /> : <div className="h-[400px] flex items-center justify-center text-slate-500 italic">Calculating hotspots...</div>}
+            </div>
+        </div>
+
+        {/* AI Refactor Advisor Section */}
+        <div className="grid grid-cols-1 gap-8 mt-12 pb-12">
+            <div className="glass border border-slate-800/50 p-6 rounded-2xl">
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-cyan-400" />
+                        AI Refactor Advisor & Impact Simulator
+                    </h3>
+                    <div className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-[10px] font-bold uppercase tracking-widest border border-cyan-500/20">
+                        Predictive Engine Active
+                    </div>
+                </div>
+                <RefactorAdvisor repoId={repoId} />
             </div>
         </div>
 

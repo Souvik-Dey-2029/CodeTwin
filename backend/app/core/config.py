@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        return "sqlite:///./sql_app.db"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
