@@ -3,6 +3,7 @@ from app.core.celery_app import celery_app
 # Lazy imports inside task to avoid breaking API on startup due to missing dependencies
 from app.core.database import SessionLocal
 from app.models.analysis import AnalysisRun
+from app.models.repository import Repository
 
 @celery_app.task(bind=True)
 def run_full_analysis(self, repo_url: str, repo_id: int, analysis_id: int):

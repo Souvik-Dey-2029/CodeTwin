@@ -1,4 +1,5 @@
 import networkx as nx
+import os
 from typing import Dict, Any, List
 
 class GraphAnalyzer:
@@ -173,5 +174,3 @@ class GraphAnalyzer:
             })
             
         return root
-
-import os # Required for basename
