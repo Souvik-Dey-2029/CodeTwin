@@ -39,8 +39,10 @@ class GraphAnalyzer:
         scores = {}
 
         for file_path, metrics in file_metrics.items():
-            complexity = metrics.get("complexity", 0)
-            maintainability = metrics.get("maintainability", 100)
+            complexity_data = metrics.get("complexity", [])
+            # Aggregate complexity: sum of all components
+            complexity = sum(item.get("complexity", 0) for item in complexity_data) if isinstance(complexity_data, list) else 0
+            maintainability = metrics.get("maintainability", {}).get("score", 100) if isinstance(metrics.get("maintainability"), dict) else 100
             
             # Normalize complexity (capped at 50 for scaling)
             norm_complexity = min(complexity / 50.0, 1.0)
@@ -91,16 +93,17 @@ class GraphAnalyzer:
         candidates = []
 
         for file_path, metrics in file_metrics.items():
-            complexity = metrics.get("complexity", 0)
+            complexity_data = metrics.get("complexity", [])
+            complexity = sum(item.get("complexity", 0) for item in complexity_data) if isinstance(complexity_data, list) else 0
             centrality = graph_metrics.get(file_path, {}).get("centrality", 0.0)
 
-            # Heuristic: Complexity > 40 AND Centrality > 0.7
+            # Heuristic: Complexity > 40 OR Centrality > 0.7
             if complexity > 40 or centrality > 0.7:
                 candidates.append({
                     "file_path": file_path,
                     "complexity": complexity,
                     "centrality": round(centrality, 2),
-                    "reason": "High complexity and architectural centrality detected."
+                    "reason": f"High aggregate complexity ({complexity}) and architectural centrality ({round(centrality, 2)}) detected."
                 })
         
         return candidates
