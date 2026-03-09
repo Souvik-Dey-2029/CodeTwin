@@ -7,12 +7,14 @@ import DependencyGraph from "@/components/dependency-graph";
 import RiskHeatmap from "@/components/risk-heatmap";
 import RefactorAdvisor from "@/components/refactor-advisor";
 import { Activity, Code, FileText, AlertCircle, TrendingUp, History, Loader2, HardDrive, Zap } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { api, Repository, AnalysisStatus } from "@/lib/api";
 
-export default function RepositoryDashboard() {
-  const { id } = useParams();
-  const repoId = parseInt(id as string);
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+  const repoId = id ? parseInt(id) : 1; // Default to 1 if no ID is passed
 
   const [repo, setRepo] = useState<Repository | null>(null);
   const [summary, setSummary] = useState<any>(null);
@@ -255,5 +257,13 @@ export default function RepositoryDashboard() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function RepositoryDashboard() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#020617]"><Loader2 className="w-10 h-10 text-[#00E5FF] animate-spin" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

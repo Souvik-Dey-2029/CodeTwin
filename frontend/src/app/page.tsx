@@ -30,7 +30,7 @@ export default function LandingPage() {
     setIsLoading(true);
     try {
       const repo = await api.submitRepository(url);
-      router.push(`/dashboard/${repo.id}`);
+      router.push(`/dashboard?id=${repo.id}`);
     } catch (error) {
       console.error("Submission failed:", error);
       alert("Failed to initialize Digital Twin. Please check the URL.");
@@ -122,7 +122,7 @@ export default function LandingPage() {
               {recentRepos.map((repo) => (
                 <a
                   key={repo.id}
-                  href={`/dashboard/${repo.id}`}
+                  href={`/dashboard?id=${repo.id}`}
                   className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md hover:border-cyan-500/50 hover:bg-white/[0.07] hover:shadow-[0_0_20px_rgba(0,229,255,0.1)] transition-all group relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
