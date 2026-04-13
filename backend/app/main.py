@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Ensure the repo root is on sys.path so sibling packages (e.g. analysis_engine) can be imported.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
@@ -7,7 +13,7 @@ import app.models # Ensure models are loaded for create_all
 app = FastAPI(
     title="CodeTwin API",
     description="Backend API for CodeTwin - AI Digital Twin for Codebases",
-    version="0.1.0",
+    version="0.2.0",  # Updated to include reanalyze endpoint
 )
 
 # Create database tables

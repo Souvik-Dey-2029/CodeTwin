@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     CELERY_BROKER_URL: str = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
     CELERY_RESULT_BACKEND: str = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+    
+    # external APIs
+    OPENROUTER_API_KEY: Optional[str] = None
 
     @property
     def get_database_url(self) -> str:

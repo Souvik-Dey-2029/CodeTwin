@@ -69,10 +69,13 @@ class GraphAnalyzer:
 
         for node in self.graph.nodes:
             metrics = file_metrics.get(node, {})
+            complexity_data = metrics.get("complexity", [])
+            # Aggregate complexity: sum of all components into a single number
+            complexity = sum(item.get("complexity", 0) for item in complexity_data) if isinstance(complexity_data, list) else 0
             nodes.append({
                 "id": node,
                 "name": os.path.basename(node),
-                "complexity": metrics.get("complexity", 0),
+                "complexity": complexity,
                 "centrality": graph_metrics.get(node, {}).get("centrality", 0.0),
                 "pagerank": graph_metrics.get(node, {}).get("pagerank", 0.0)
             })
@@ -152,7 +155,7 @@ class GraphAnalyzer:
         
         # Build nested structure based on file paths
         for file_path, score in risk_scores.items():
-            parts = file_path.split("/")
+            parts = file_path.replace("\\", "/").split("/")
             current = root
             for i, part in enumerate(parts[:-1]):
                 found = False
