@@ -44,10 +44,30 @@ def run_analysis_logic(repo_url: str, repo_id: int, analysis_id: int):
         analyzer = GraphAnalyzer(parser.graph)
         file_metrics = {f["path"]: f["metrics"] for f in structure["files"]}
         
-        # Save results to the analysis model
+        # Save main analysis results
         analysis.graph_data = analyzer.get_d3_data(file_metrics)
         analysis.heatmap_data = analyzer.get_heatmap_data(file_metrics)
         analysis.refactor_data = analyzer.detect_god_objects(file_metrics)
+        
+        # 4. Dead Code Analysis (JavaScript/TypeScript repos)
+        try:
+            from analysis_engine.dead_code_detector import DeadCodeDetector
+            dead_code_detector = DeadCodeDetector(local_path)
+            dead_code_results = dead_code_detector.run()
+            analysis.dead_code_data = dead_code_results
+        except Exception as e:
+            print(f"Dead code detection failed: {e}")
+            analysis.dead_code_data = {"error": str(e), "dead_functions": [], "unused_imports": []}
+        
+        # 5. Dependency Analysis
+        try:
+            from analysis_engine.dependency_analyzer import DependencyAnalyzer
+            dep_analyzer = DependencyAnalyzer(local_path)
+            dep_results = dep_analyzer.run()
+            analysis.dependency_data = dep_results
+        except Exception as e:
+            print(f"Dependency analysis failed: {e}")
+            analysis.dependency_data = {"error": str(e), "unused_dependencies": [], "missing_dependencies": []}
         
         # Calculate and update Repository Health Score
         risk_scores = analyzer.get_risk_scores(file_metrics)
