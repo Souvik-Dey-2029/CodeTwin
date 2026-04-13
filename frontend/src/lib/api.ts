@@ -44,6 +44,39 @@ export interface ImpactSimulation {
   }[];
 }
 
+export interface DeadFunctionFinding {
+  name: string;
+  file: string;
+  line: number;
+  type: string;
+  confidence: number;
+}
+
+export interface DeadCodeAnalysis {
+  dead_functions: DeadFunctionFinding[];
+  unused_imports: any[];
+  total_functions_analyzed: number;
+  total_files_analyzed: number;
+  total_issues: number;
+}
+
+export interface UnusedDependency {
+  name: string;
+  version: string;
+  type: string;
+  confidence: number;
+  suggestion: string;
+}
+
+export interface DependencyAnalysis {
+  unused_dependencies: UnusedDependency[];
+  missing_dependencies: any[];
+  total_declared: number;
+  total_used: number;
+  issue_count: number;
+  summary?: string;
+}
+
 export const api = {
   async submitRepository(githubUrl: string): Promise<Repository> {
     const response = await fetch(`${API_BASE_URL}/repositories/`, {
@@ -110,6 +143,46 @@ export const api = {
       body: JSON.stringify({ file_path: filePath }),
     });
     if (!response.ok) throw new Error("Failed to simulate impact");
+    return response.json();
+  },
+
+  async getAiRefactorAdvice(repoId: number, filePath: string): Promise<{ advice: string }> {
+    // Base64 encode the path to safely pass it in URL
+    const b64Path = typeof window !== 'undefined' ? btoa(filePath) : Buffer.from(filePath).toString('base64');
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/ai-advice?file_path_b64=${encodeURIComponent(b64Path)}`);
+    if (!response.ok) throw new Error("Failed to fetch AI advice");
+    return response.json();
+  },
+
+  async reanalyzeRepository(repoId: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/reanalyze`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error("Failed to trigger reanalysis");
+    return response.json();
+  },
+
+  async getDeadCodeAnalysis(repoId: number): Promise<DeadCodeAnalysis> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/dead-code`);
+    if (!response.ok) throw new Error("Failed to fetch dead code analysis");
+    return response.json();
+  },
+
+  async getDependencyAnalysis(repoId: number): Promise<DependencyAnalysis> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/dependencies`);
+    if (!response.ok) throw new Error("Failed to fetch dependency analysis");
+    return response.json();
+  },
+
+  async explainDeadFunction(repoId: number, funcIndex: number): Promise<{ explanation: string; confidence: number }> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/dead-code/${funcIndex}/explanation`);
+    if (!response.ok) throw new Error("Failed to fetch explanation");
+    return response.json();
+  },
+
+  async explainUnusedDependency(repoId: number, depIndex: number): Promise<{ explanation: string; confidence: number }> {
+    const response = await fetch(`${API_BASE_URL}/repositories/${repoId}/dependencies/${depIndex}/explanation`);
+    if (!response.ok) throw new Error("Failed to fetch explanation");
     return response.json();
   },
 };
