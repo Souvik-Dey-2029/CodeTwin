@@ -16,6 +16,8 @@ class AnalysisRun(Base):
     graph_data = Column(JSON, nullable=True)
     heatmap_data = Column(JSON, nullable=True)
     refactor_data = Column(JSON, nullable=True)
+    dead_code_data = Column(JSON, nullable=True)
+    dependency_data = Column(JSON, nullable=True)
 
 class RiskScore(Base):
     __tablename__ = "risk_scores"
