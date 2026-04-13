@@ -26,7 +26,7 @@ export default function RiskHeatmap({ data }: { data: TreemapData }) {
     svg.selectAll("*").remove();
 
     const root = d3.hierarchy(data)
-      .sum((d: any) => d.value || 0)
+      .sum((d: any) => Math.max(d.value || 0, 1))
       .sort((a: any, b: any) => (b.value || 0) - (a.value || 0));
 
     d3.treemap<any>()
@@ -43,10 +43,10 @@ export default function RiskHeatmap({ data }: { data: TreemapData }) {
       .attr("width", (d: any) => d.x1 - d.x0)
       .attr("height", (d: any) => d.y1 - d.y0)
       .attr("fill", (d: any) => {
-          const val = d.data.value || 0;
-          if (val > 40) return "#ef4444"; // Red
-          if (val > 20) return "#f59e0b"; // Amber
-          return "#10b981"; // Green
+        const val = d.data.value || 0;
+        if (val > 40) return "#ef4444"; // Red
+        if (val > 20) return "#f59e0b"; // Amber
+        return "#10b981"; // Green
       })
       .attr("fill-opacity", 0.6)
       .attr("stroke", "#020617")
