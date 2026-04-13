@@ -9,6 +9,8 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
   const [selectedProposal, setSelectedProposal] = useState<RefactorProposal | null>(null);
   const [impact, setImpact] = useState<ImpactSimulation | null>(null);
   const [codeContent, setCodeContent] = useState<string | null>(null);
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,10 +47,47 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
     }
   };
 
+  const fetchAiAdvice = async (filePath: string) => {
+    setIsGenerating(true);
+    setAiAdvice(null);
+    try {
+      const data = await api.getAiRefactorAdvice(repoId, filePath);
+      setAiAdvice(data.advice);
+    } catch (err) {
+      console.error("Failed to fetch AI advice", err);
+      setAiAdvice("**Error:** Failed to connect to Gemini 1.5 Predictive Engine. Please check your OpenRouter API Key.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const ignoreProposal = () => {
+    if (!selectedProposal) return;
+
+    const currentIndex = proposals.findIndex(
+      (p) => p.file_path === selectedProposal.file_path
+    );
+
+    // Remove the current proposal
+    const updatedProposals = proposals.filter(
+      (p) => p.file_path !== selectedProposal.file_path
+    );
+    setProposals(updatedProposals);
+
+    // Select the next proposal or the previous one
+    if (updatedProposals.length > 0) {
+      const nextIndex = Math.min(currentIndex, updatedProposals.length - 1);
+      setSelectedProposal(updatedProposals[nextIndex]);
+    } else {
+      setSelectedProposal(null);
+    }
+  };
+
   useEffect(() => {
     if (selectedProposal) {
       simulateBlastRadius(selectedProposal.file_path);
       fetchCode(selectedProposal.file_path);
+      fetchAiAdvice(selectedProposal.file_path);
     }
   }, [selectedProposal]);
 
@@ -67,11 +106,10 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
             <button
               key={p.file_path}
               onClick={() => setSelectedProposal(p)}
-              className={`w-full text-left p-4 rounded-lg border transition-all ${
-                selectedProposal?.file_path === p.file_path
+              className={`w-full text-left p-4 rounded-lg border transition-all ${selectedProposal?.file_path === p.file_path
                   ? "bg-cyan-500/10 border-cyan-500/50"
                   : "bg-black/40 border-white/5 hover:border-white/20"
-              }`}
+                }`}
             >
               <div className="text-sm font-medium text-white mb-1 truncate">{p.file_path.split("/").pop()}</div>
               <div className="text-xs text-gray-500 mb-2 truncate">{p.file_path}</div>
@@ -104,13 +142,25 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
                   <div className="text-2xl font-black text-cyan-400">{impact?.impact_score || 0}%</div>
                 </div>
               </div>
-              <div className="bg-black/40 rounded-lg p-4 border border-white/5">
+              {/* AI Generative Advice Block */}
+              <div className="bg-black/40 rounded-lg p-4 border border-cyan-500/10">
                 <div className="flex gap-2 text-sm text-gray-300">
-                  <Search className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-cyan-400 font-semibold italic">Recommendation: </span>
-                    {selectedProposal.suggested_action}
-                  </div>
+                  {isGenerating ? (
+                    <div className="flex items-center gap-3 w-full text-cyan-400">
+                      <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="animate-pulse">Gemini 1.5 Flash is analyzing {selectedProposal.complexity} complexity points and planning refactor...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="w-full">
+                        <span className="text-amber-400 font-bold tracking-wider uppercase text-xs mb-2 block">AI Synthesis (Gemini Flash)</span>
+                        <div className="whitespace-pre-wrap text-[13px] leading-relaxed font-mono text-gray-300">
+                          {aiAdvice || "No recommendations generated."}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -171,7 +221,10 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
 
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
-              <button className="px-5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 transition-colors">
+              <button
+                onClick={ignoreProposal}
+                className="px-5 py-2 rounded-lg bg-white/5 border border-white/10 text-sm font-medium text-white hover:bg-white/10 transition-colors active:bg-white/20"
+              >
                 Ignore Proposal
               </button>
               <button className="px-5 py-2 rounded-lg bg-cyan-600 text-sm font-bold text-white hover:bg-cyan-500 transition-shadow shadow-lg shadow-cyan-900/20 flex items-center gap-2">
@@ -179,6 +232,13 @@ export default function RefactorAdvisor({ repoId }: { repoId: number }) {
               </button>
             </div>
           </>
+        )}
+        {!selectedProposal && !loading && (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 border border-dashed border-white/10 rounded-xl bg-black/20 p-8 space-y-4">
+            <ShieldCheck className="w-16 h-16 text-emerald-500/50" />
+            <h3 className="text-xl font-bold text-emerald-400">Architecture is Stable</h3>
+            <p className="text-center max-w-md">The predictive engine did not detect any high-risk God Objects or severely complex modules in this codebase. No critical refactoring is needed at this moment.</p>
+          </div>
         )}
       </div>
     </div>
